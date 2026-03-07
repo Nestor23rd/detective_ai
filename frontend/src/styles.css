@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --ink: #0f1b2d;
+  --ink-soft: #23324a;
+  --ember: #e05a47;
+  --parchment: #f4efe5;
+  --mist: #edf2f7;
+  --pine: #295245;
+  --steel: #6b7a90;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(224, 90, 71, 0.18), transparent 26%),
+    radial-gradient(circle at 85% 10%, rgba(41, 82, 69, 0.14), transparent 24%),
+    radial-gradient(circle at 50% 100%, rgba(75, 110, 180, 0.08), transparent 26%),
+    linear-gradient(180deg, #fbf7f1 0%, #f3eee5 44%, #eef3f7 100%);
+  font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0));
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+
+@layer components {
+  .shell-card {
+    @apply rounded-[28px] border border-white/70 bg-white/80 shadow-dossier backdrop-blur;
+    box-shadow:
+      0 18px 50px rgba(15, 27, 45, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-ember/20 bg-white/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-ember;
+  }
+
+  .section-title {
+    @apply text-3xl font-semibold tracking-tight text-ink md:text-4xl;
+  }
+
+  .ghost-grid {
+    background-image:
+      linear-gradient(rgba(15, 27, 45, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 27, 45, 0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .score-bar {
+    @apply h-3 overflow-hidden rounded-full bg-slate-200;
+  }
+
+  .soft-panel {
+    @apply rounded-[24px] border border-slate-200/80 bg-slate-50/85;
+  }
+
+  .hero-stat {
+    @apply rounded-[24px] border border-white/70 bg-white/80 px-5 py-5 shadow-[0_12px_30px_rgba(15,27,45,0.06)];
+  }
+}

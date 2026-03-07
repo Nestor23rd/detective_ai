@@ -1,0 +1,10 @@
+{$SITE_ADDRESS::80} {
+    encode zstd gzip
+    root * /srv
+
+    @api path /api /api/*
+    reverse_proxy @api {$API_UPSTREAM:http://host.docker.internal:8080}
+
+    try_files {path} /index.html
+    file_server
+}
