@@ -11,7 +11,7 @@ import com.aidetective.backend.analysis.dto.AsiInvestigationResult;
 import com.aidetective.backend.analysis.dto.AsiSignalExtractionResult;
 import com.aidetective.backend.analysis.dto.FollowUpQuestionRequest;
 import com.aidetective.backend.analysis.exception.BadRequestException;
-import com.aidetective.backend.analysis.integration.AsiOneClient;
+import com.aidetective.backend.analysis.integration.GradientAiClient;
 import com.aidetective.backend.analysis.model.AnalysisRecord;
 import com.aidetective.backend.analysis.model.AnalysisStatus;
 import com.aidetective.backend.analysis.model.InputType;
@@ -36,7 +36,7 @@ class AnalysisServiceTest {
     private ArticleExtractionService articleExtractionService;
 
     @Mock
-    private AsiOneClient asiOneClient;
+    private GradientAiClient gradientAiClient;
 
     @Mock
     private DocumentExtractionService documentExtractionService;
@@ -91,7 +91,8 @@ class AnalysisServiceTest {
             "Likely True",
             "Reasoning",
             List.of("The image was analyzed without original metadata."),
-            List.of("Run a reverse image search.")
+            List.of("Run a reverse image search."),
+            null
         );
         var extractionResult = new AsiSignalExtractionResult(
             "Visual summary",
@@ -101,10 +102,10 @@ class AnalysisServiceTest {
             List.of("misinformation", "public safety")
         );
 
-        when(asiOneClient.extractImageSignals("aGVsbG8=", "image/png", "suspicious-post.png", "suspicious-post.png"))
+        when(gradientAiClient.extractImageSignals("aGVsbG8=", "image/png", "suspicious-post.png", "suspicious-post.png"))
             .thenReturn(extractionResult);
-        when(asiOneClient.analyzeInvestigation(null, InputType.IMAGE, null, "suspicious-post.png", "suspicious-post.png", extractionResult))
-            .thenReturn(new AsiOneClient.AiAnalysis(aiResult, "asi1-vision"));
+        when(gradientAiClient.analyzeInvestigation(null, InputType.IMAGE, null, "suspicious-post.png", "suspicious-post.png", extractionResult))
+            .thenReturn(new GradientAiClient.AiAnalysis(aiResult, "gradient-vision"));
         when(analysisRepository.save(any(AnalysisRecord.class))).thenAnswer(invocation -> {
             AnalysisRecord record = invocation.getArgument(0);
             record.setId("img-1");
@@ -115,7 +116,7 @@ class AnalysisServiceTest {
 
         assertThat(response.inputType()).isEqualTo(InputType.IMAGE);
         assertThat(response.imageMimeType()).isEqualTo("image/png");
-        assertThat(response.modelUsed()).isEqualTo("asi1-vision");
+        assertThat(response.modelUsed()).isEqualTo("gradient-vision");
         assertThat(response.analysisStatus()).isEqualTo(AnalysisStatus.COMPLETED);
         assertThat(response.contentLanguage()).isEqualTo("Hinglish");
         assertThat(response.riskLabels()).containsExactly("misinformation", "public safety");
@@ -125,7 +126,7 @@ class AnalysisServiceTest {
 
         ArgumentCaptor<AnalysisRecord> captor = ArgumentCaptor.forClass(AnalysisRecord.class);
         verify(analysisRepository).save(captor.capture());
-        assertThat(captor.getValue().getModelUsed()).isEqualTo("asi1-vision");
+        assertThat(captor.getValue().getModelUsed()).isEqualTo("gradient-vision");
         assertThat(captor.getValue().getImageMimeType()).isEqualTo("image/png");
         assertThat(captor.getValue().getContentLanguage()).isEqualTo("Hinglish");
         assertThat(captor.getValue().getRiskLabels()).containsExactly("misinformation", "public safety");
@@ -159,12 +160,13 @@ class AnalysisServiceTest {
             "Likely Fake",
             "No video content, metadata, or transcript can be retrieved, so the submission cannot be fact-checked.",
             List.of(),
-            List.of()
+            List.of(),
+            null
         );
 
-        when(asiOneClient.extractSignals(any(), any(), any(), any(), any())).thenReturn(extractionResult);
-        when(asiOneClient.analyzeInvestigation(any(), any(), any(), any(), any(), any()))
-            .thenReturn(new AsiOneClient.AiAnalysis(aiResult, "asi1"));
+        when(gradientAiClient.extractSignals(any(), any(), any(), any(), any())).thenReturn(extractionResult);
+        when(gradientAiClient.analyzeInvestigation(any(), any(), any(), any(), any(), any()))
+            .thenReturn(new GradientAiClient.AiAnalysis(aiResult, "gradient-default"));
         when(analysisRepository.save(any(AnalysisRecord.class))).thenAnswer(invocation -> {
             AnalysisRecord record = invocation.getArgument(0);
             record.setId("vid-1");
@@ -215,8 +217,8 @@ class AnalysisServiceTest {
         record.setVisitedUrls(List.of("https://example.com/fact-check"));
 
         when(analysisRepository.findById("case-1")).thenReturn(Optional.of(record));
-        when(asiOneClient.followUp(record, "What is the weakest claim?"))
-            .thenReturn(new AsiOneClient.FollowUpAnswer(
+        when(gradientAiClient.followUp(record, "What is the weakest claim?"))
+            .thenReturn(new GradientAiClient.FollowUpAnswer(
                 "The weakest claim is the blanket closure statement because it lacks an attributable source.",
                 List.of("https://example.com/fact-check"),
                 List.of("Check the local education department website.")

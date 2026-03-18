@@ -37,6 +37,7 @@ public class AnalysisRecord {
     private String reasoning;
     private List<String> limitations = new ArrayList<>();
     private List<String> recommendedChecks = new ArrayList<>();
+    private AdvancedModulesInsight advancedModules;
     private Instant createdAt;
 
     public String getId() {
@@ -213,6 +214,14 @@ public class AnalysisRecord {
 
     public void setRecommendedChecks(List<String> recommendedChecks) {
         this.recommendedChecks = recommendedChecks;
+    }
+
+    public AdvancedModulesInsight getAdvancedModules() {
+        return advancedModules;
+    }
+
+    public void setAdvancedModules(AdvancedModulesInsight advancedModules) {
+        this.advancedModules = advancedModules;
     }
 
     public Instant getCreatedAt() {

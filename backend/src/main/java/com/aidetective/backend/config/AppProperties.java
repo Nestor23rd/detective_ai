@@ -8,14 +8,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AppProperties {
 
     private final Cors cors = new Cors();
-    private final Asi asi = new Asi();
+    private final Ai ai = new Ai();
 
     public Cors getCors() {
         return cors;
     }
 
-    public Asi getAsi() {
-        return asi;
+    public Ai getAi() {
+        return ai;
     }
 
     public static class Cors {
@@ -30,7 +30,7 @@ public class AppProperties {
         }
     }
 
-    public static class Asi {
+    public static class Ai {
         private String baseUrl = "https://api.asi1.ai/v1";
         private String apiKey;
         private String model = "asi1";

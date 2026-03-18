@@ -183,6 +183,14 @@ public class PromptFactory {
             7. Return 2-4 risk labels, the best-effort content language, limitations, and recommended next checks.
             8. If the content cannot be fully validated, make the uncertainty explicit and lower the confidence.
             9. When web search helps, use it and capture the most relevant URLs.
+            10. Fill advanced_modules with:
+                - virality_level: Faible/Moyen/Élevé
+                - virality_reasons and sharing_factors
+                - manipulation_signals (clickbait, fear, urgency, conspiracy, anti-institution, emotional manipulation, false authority)
+                - misinformation_impact and impact_reason (Faible/Moyen/Élevé)
+                - trust_risk_level and trust_conclusion (Faible/Moyen/Élevé)
+                - technical_risks (phishing, malware, scam, illegal streaming, copyright abuse when relevant)
+                - security_recommendations and human_verification_steps
             """.formatted(
             inputType.name(),
             safeText(sourceTitle, "Manual submission"),
@@ -270,6 +278,7 @@ public class PromptFactory {
             6. Keep every string concise so the final JSON is compact and complete.
             7. Keep the overall verdict strictly to one of: Likely Fake, Questionable, Likely True, Verified.
             8. Return limitations and recommended next checks.
+            9. Fill advanced_modules in the same structure as text investigations. If technical evidence is missing, keep technical_risks as an empty array.
             """.formatted(
             safeText(sourceTitle, "Video source"),
             safeText(sourceUrl, "N/A"),

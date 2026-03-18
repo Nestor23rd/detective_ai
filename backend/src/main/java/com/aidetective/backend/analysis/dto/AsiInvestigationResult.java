@@ -13,7 +13,8 @@ public record AsiInvestigationResult(
     String verdict,
     String reasoning,
     List<String> limitations,
-    List<String> recommended_checks
+    List<String> recommended_checks,
+    AdvancedAnalysisModules advanced_modules
 ) {
     public record AsiClaim(
         String statement,

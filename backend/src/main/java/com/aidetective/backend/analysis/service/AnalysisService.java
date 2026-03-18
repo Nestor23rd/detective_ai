@@ -3,6 +3,7 @@ package com.aidetective.backend.analysis.service;
 import com.aidetective.backend.analysis.dto.AnalysisHistoryItemResponse;
 import com.aidetective.backend.analysis.dto.AnalysisResponse;
 import com.aidetective.backend.analysis.dto.AnalyzeRequest;
+import com.aidetective.backend.analysis.dto.AdvancedAnalysisModules;
 import com.aidetective.backend.analysis.dto.AsiInvestigationResult;
 import com.aidetective.backend.analysis.dto.AsiSignalExtractionResult;
 import com.aidetective.backend.analysis.dto.FollowUpQuestionRequest;
@@ -11,9 +12,10 @@ import com.aidetective.backend.analysis.dto.ClaimResponse;
 import com.aidetective.backend.analysis.dto.EntityResponse;
 import com.aidetective.backend.analysis.exception.AnalysisNotFoundException;
 import com.aidetective.backend.analysis.exception.BadRequestException;
-import com.aidetective.backend.analysis.integration.AsiOneClient;
+import com.aidetective.backend.analysis.integration.GradientAiClient;
 import com.aidetective.backend.analysis.model.AnalysisRecord;
 import com.aidetective.backend.analysis.model.AnalysisStatus;
+import com.aidetective.backend.analysis.model.AdvancedModulesInsight;
 import com.aidetective.backend.analysis.model.ClaimInsight;
 import com.aidetective.backend.analysis.model.EntityInsight;
 import com.aidetective.backend.analysis.model.InputType;
@@ -39,18 +41,18 @@ public class AnalysisService {
 
     private final AnalysisRepository analysisRepository;
     private final ArticleExtractionService articleExtractionService;
-    private final AsiOneClient asiOneClient;
+    private final GradientAiClient gradientAiClient;
     private final DocumentExtractionService documentExtractionService;
 
     public AnalysisService(
         AnalysisRepository analysisRepository,
         ArticleExtractionService articleExtractionService,
-        AsiOneClient asiOneClient,
+        GradientAiClient gradientAiClient,
         DocumentExtractionService documentExtractionService
     ) {
         this.analysisRepository = analysisRepository;
         this.articleExtractionService = articleExtractionService;
-        this.asiOneClient = asiOneClient;
+        this.gradientAiClient = gradientAiClient;
         this.documentExtractionService = documentExtractionService;
     }
 
@@ -74,7 +76,7 @@ public class AnalysisService {
         String imageMimeType = null;
         List<String> explicitVisitedUrls = new ArrayList<>();
         AsiSignalExtractionResult extraction;
-        AsiOneClient.AiAnalysis aiAnalysis;
+        GradientAiClient.AiAnalysis aiAnalysis;
 
         if (hasUrl) {
             inputType = InputType.URL;
@@ -85,8 +87,8 @@ public class AnalysisService {
             normalizedText = normalize(request.url(), extractedArticle.text());
             originalInput = sourceUrl;
             explicitVisitedUrls.add(sourceUrl);
-            extraction = asiOneClient.extractSignals(normalizedText, inputType, sourceUrl, sourceTitle, sourceLabel);
-            aiAnalysis = asiOneClient.analyzeInvestigation(normalizedText, inputType, sourceUrl, sourceTitle, sourceLabel, extraction);
+            extraction = gradientAiClient.extractSignals(normalizedText, inputType, sourceUrl, sourceTitle, sourceLabel);
+            aiAnalysis = gradientAiClient.analyzeInvestigation(normalizedText, inputType, sourceUrl, sourceTitle, sourceLabel, extraction);
         } else if (hasImage) {
             inputType = InputType.IMAGE;
             imageMimeType = normalizeImageMimeType(request.imageMimeType());
@@ -95,8 +97,8 @@ public class AnalysisService {
             sourceTitle = hasValue(request.imageName()) ? request.imageName().trim() : "Uploaded image";
             sourceLabel = sourceTitle;
             originalInput = sourceTitle;
-            extraction = asiOneClient.extractImageSignals(imageBase64, imageMimeType, sourceTitle, sourceLabel);
-            aiAnalysis = asiOneClient.analyzeInvestigation(null, inputType, null, sourceTitle, sourceLabel, extraction);
+            extraction = gradientAiClient.extractImageSignals(imageBase64, imageMimeType, sourceTitle, sourceLabel);
+            aiAnalysis = gradientAiClient.analyzeInvestigation(null, inputType, null, sourceTitle, sourceLabel, extraction);
         } else if (hasVideo) {
             inputType = InputType.VIDEO;
             sourceUrl = normalizeVideoUrl(request.videoUrl());
@@ -110,15 +112,15 @@ public class AnalysisService {
                 If direct video contents are unavailable, explain the limitations clearly and assess the credibility signals of the source itself.
                 """.formatted(sourceUrl);
             explicitVisitedUrls.add(sourceUrl);
-            extraction = asiOneClient.extractSignals(normalizedText, inputType, sourceUrl, sourceTitle, sourceLabel);
-            aiAnalysis = asiOneClient.analyzeInvestigation(normalizedText, inputType, sourceUrl, sourceTitle, sourceLabel, extraction);
+            extraction = gradientAiClient.extractSignals(normalizedText, inputType, sourceUrl, sourceTitle, sourceLabel);
+            aiAnalysis = gradientAiClient.analyzeInvestigation(normalizedText, inputType, sourceUrl, sourceTitle, sourceLabel, extraction);
         } else {
             inputType = InputType.TEXT;
             sourceLabel = "Manual text submission";
             normalizedText = normalize("text", request.text());
             originalInput = request.text().trim();
-            extraction = asiOneClient.extractSignals(normalizedText, inputType, null, null, sourceLabel);
-            aiAnalysis = asiOneClient.analyzeInvestigation(normalizedText, inputType, null, null, sourceLabel, extraction);
+            extraction = gradientAiClient.extractSignals(normalizedText, inputType, null, null, sourceLabel);
+            aiAnalysis = gradientAiClient.analyzeInvestigation(normalizedText, inputType, null, null, sourceLabel, extraction);
         }
 
         var record = toRecord(
@@ -145,14 +147,14 @@ public class AnalysisService {
         String mimeType = extractedUpload.mimeType();
         String normalizedText = normalize(inputType.name().toLowerCase(), extractedUpload.normalizedText());
 
-        AsiSignalExtractionResult extraction = asiOneClient.extractSignals(
+        AsiSignalExtractionResult extraction = gradientAiClient.extractSignals(
             normalizedText,
             inputType,
             null,
             sourceTitle,
             sourceLabel
         );
-        AsiOneClient.AiAnalysis aiAnalysis = asiOneClient.analyzeInvestigation(
+        GradientAiClient.AiAnalysis aiAnalysis = gradientAiClient.analyzeInvestigation(
             normalizedText,
             inputType,
             null,
@@ -194,7 +196,7 @@ public class AnalysisService {
             .orElseThrow(() -> new AnalysisNotFoundException(id));
 
         String question = normalize("follow-up question", request.question());
-        var followUp = asiOneClient.followUp(record, question);
+        var followUp = gradientAiClient.followUp(record, question);
 
         return new FollowUpResponse(
             defaultText(followUp.answer(), "No follow-up answer returned by the AI model."),
@@ -207,7 +209,7 @@ public class AnalysisService {
     }
 
     private AnalysisRecord toRecord(
-        AsiOneClient.AiAnalysis aiAnalysis,
+        GradientAiClient.AiAnalysis aiAnalysis,
         AsiSignalExtractionResult extraction,
         InputType inputType,
         String originalInput,
@@ -228,7 +230,7 @@ public class AnalysisService {
         record.setSourceTitle(sourceTitle);
         record.setSourceLabel(sourceLabel);
         record.setImageMimeType(imageMimeType);
-        record.setModelUsed(defaultText(aiAnalysis.modelUsed(), "asi1"));
+        record.setModelUsed(defaultText(aiAnalysis.modelUsed(), "gradient-default"));
         record.setAnalysisStatus(resolution.status());
         record.setStatusReason(resolution.reason());
         record.setContentLanguage(defaultText(result.content_language(), defaultText(extraction.content_language(), "Unknown")));
@@ -243,6 +245,15 @@ public class AnalysisService {
         record.setReasoning(defaultText(result.reasoning(), "No reasoning returned by the AI model."));
         record.setLimitations(selectList(result.limitations(), defaultLimitations(inputType, resolution)));
         record.setRecommendedChecks(selectList(result.recommended_checks(), defaultRecommendedChecks(inputType, resolution)));
+        record.setAdvancedModules(resolveAdvancedModules(
+            result.advanced_modules(),
+            inputType,
+            resolution,
+            normalizedText,
+            record.getRiskLabels(),
+            record.getVisitedUrls(),
+            record.getRecommendedChecks()
+        ));
         record.setCreatedAt(Instant.now());
         return record;
     }
@@ -316,13 +327,12 @@ public class AnalysisService {
             AsiSignalExtractionResult.AsiClaimCandidate fallback = fallbackClaims != null && index < fallbackClaims.size()
                 ? fallbackClaims.get(index)
                 : null;
-
             mapped.add(new ClaimInsight(
                 defaultText(claim == null ? null : claim.statement(), defaultText(fallback == null ? null : fallback.statement(), "Unspecified claim")),
                 defaultText(claim == null ? null : claim.suspicion(), "No suspicion detail provided"),
                 defaultText(claim == null ? null : claim.evidence_hint(), defaultText(fallback == null ? null : fallback.why_it_matters(), "No evidence hint provided")),
                 defaultText(claim == null ? null : claim.assessment(), "Questionable"),
-                clampScore(claim == null ? null : claim.confidence()),
+                clampScoreOrDefault(claim == null ? null : claim.confidence(), 50),
                 cleanList(claim == null ? null : claim.evidence_points()),
                 cleanList(claim == null ? null : claim.source_urls()),
                 defaultText(claim == null ? null : claim.next_step(), "Cross-check this claim with an official or primary source.")
@@ -398,6 +408,7 @@ public class AnalysisService {
             record.getReasoning(),
             record.getLimitations(),
             record.getRecommendedChecks(),
+            toResponseModules(record, resolution),
             record.getCreatedAt()
         );
     }
@@ -436,14 +447,16 @@ public class AnalysisService {
                 record.getVerdict() == null ? null : record.getVerdict().getLabel(),
                 record.getReasoning(),
                 record.getLimitations(),
-                record.getRecommendedChecks()
+                record.getRecommendedChecks(),
+                null
             )
         );
 
         AnalysisStatus status = record.getAnalysisStatus();
         String reason = record.getStatusReason();
-        Integer score = clampScore(record.getCredibilityScore());
+        Integer score = clampScoreOrNull(record.getCredibilityScore());
         Verdict verdict = record.getVerdict();
+        score = reconcileScoreWithVerdict(score, verdict);
 
         boolean shouldDeriveStatus = status == null
             || (record.getInputType() == InputType.VIDEO && derived.status() != AnalysisStatus.COMPLETED)
@@ -458,6 +471,7 @@ public class AnalysisService {
             } else {
                 score = score == null ? derived.score() : score;
                 verdict = verdict == null ? derived.verdict() : verdict;
+                score = reconcileScoreWithVerdict(score, verdict);
             }
         }
 
@@ -476,11 +490,16 @@ public class AnalysisService {
         return new AnalysisResolution(status, reason, score, verdict);
     }
 
-    private Integer clampScore(Integer score) {
+    private Integer clampScoreOrNull(Integer score) {
         if (score == null) {
             return null;
         }
         return Math.max(0, Math.min(100, score));
+    }
+
+    private int clampScoreOrDefault(Integer score, int fallback) {
+        Integer normalized = clampScoreOrNull(score);
+        return normalized == null ? fallback : normalized;
     }
 
     private String normalize(String label, String value) {
@@ -514,6 +533,245 @@ public class AnalysisService {
             }
         }
         return List.copyOf(cleaned);
+    }
+
+    private AdvancedModulesInsight resolveAdvancedModules(
+        AdvancedAnalysisModules modules,
+        InputType inputType,
+        AnalysisResolution resolution,
+        String normalizedText,
+        List<String> riskLabels,
+        List<String> visitedUrls,
+        List<String> recommendedChecks
+    ) {
+        String content = defaultText(normalizedText, "").toLowerCase();
+        List<String> labels = cleanList(riskLabels);
+
+        List<String> sharingFactors = cleanList(modules == null ? null : modules.sharingFactors());
+        List<String> viralityReasons = cleanList(modules == null ? null : modules.viralityReasons());
+        List<String> manipulationSignals = cleanList(modules == null ? null : modules.manipulationSignals());
+        List<String> technicalRisks = cleanList(modules == null ? null : modules.technicalRisks());
+
+        if (sharingFactors.isEmpty()) {
+            if (content.length() > 0 && content.length() < 280) {
+                sharingFactors = List.of("Message court et facile a repartager");
+            }
+            if (containsAny(content, "urgent", "breaking", "share now", "immediat", "alerte", "viral")) {
+                sharingFactors = appendUnique(sharingFactors, "Ton sensationnel ou urgent");
+            }
+            if (containsAny(content, "free", "gratuit", "subsidy", "prime", "gagner", "cadeau")) {
+                sharingFactors = appendUnique(sharingFactors, "Promesse forte qui incite au partage");
+            }
+        }
+
+        if (manipulationSignals.isEmpty()) {
+            if (containsAny(content, "urgent", "immediat", "right now", "maintenant")) {
+                manipulationSignals = appendUnique(manipulationSignals, "Sentiment d'urgence");
+            }
+            if (containsAny(content, "fear", "danger", "panic", "peur", "menace")) {
+                manipulationSignals = appendUnique(manipulationSignals, "Appel a la peur");
+            }
+            if (containsAny(content, "they hide", "complot", "cover-up", "cache la verite")) {
+                manipulationSignals = appendUnique(manipulationSignals, "Rhetorique complotiste");
+            }
+            if (containsAny(content, "official experts say", "source officielle", "docteur", "scientists confirm")) {
+                manipulationSignals = appendUnique(manipulationSignals, "Fausse autorite potentielle");
+            }
+            if (containsAny(content, "click", "cliquez", "must watch", "incroyable", "choc")) {
+                manipulationSignals = appendUnique(manipulationSignals, "Langage clickbait");
+            }
+        }
+
+        if (viralityReasons.isEmpty()) {
+            if (!sharingFactors.isEmpty()) {
+                viralityReasons = appendUnique(viralityReasons, "Le format est facilement partageable sur les reseaux sociaux");
+            }
+            if (!manipulationSignals.isEmpty()) {
+                viralityReasons = appendUnique(viralityReasons, "La charge emotionnelle peut accelerer la diffusion");
+            }
+            if (labels.stream().anyMatch(label -> label.toLowerCase().contains("polit"))) {
+                viralityReasons = appendUnique(viralityReasons, "Le sujet politique augmente la probabilite de diffusion");
+            }
+        }
+
+        if (technicalRisks.isEmpty()) {
+            boolean hasLink = (visitedUrls != null && !visitedUrls.isEmpty()) || containsAny(content, "http://", "https://", "www.");
+            if (hasLink && containsAny(content, "login", "verify", "account", "otp", "bank", "wallet")) {
+                technicalRisks = appendUnique(technicalRisks, "Risque potentiel de phishing");
+            }
+            if (hasLink && containsAny(content, "apk", "download", ".exe", "crack", "mod")) {
+                technicalRisks = appendUnique(technicalRisks, "Risque potentiel de malware");
+            }
+            if (hasLink && containsAny(content, "watch free", "stream free", "telecharger film", "iptv")) {
+                technicalRisks = appendUnique(technicalRisks, "Possible site de streaming illegal");
+            }
+            if (labels.stream().anyMatch(label -> label.toLowerCase().contains("scam"))) {
+                technicalRisks = appendUnique(technicalRisks, "Risque d'arnaque");
+            }
+        }
+
+        String viralityLevel = normalizeLevel(defaultText(modules == null ? null : modules.viralityLevel(), null));
+        if (viralityLevel == null) {
+            int viralityScore = sharingFactors.size() + manipulationSignals.size();
+            viralityLevel = viralityScore >= 4 ? "Eleve" : viralityScore >= 2 ? "Moyen" : "Faible";
+        }
+
+        String impact = normalizeLevel(defaultText(modules == null ? null : modules.misinformationImpact(), null));
+        if (impact == null) {
+            impact = inferImpact(labels, resolution);
+        }
+
+        String trustRiskLevel = normalizeLevel(defaultText(modules == null ? null : modules.trustRiskLevel(), null));
+        if (trustRiskLevel == null) {
+            trustRiskLevel = inferTrustRiskLevel(resolution);
+        }
+
+        String trustConclusion = defaultText(modules == null ? null : modules.trustConclusion(), null);
+        if (trustConclusion == null) {
+            trustConclusion = switch (trustRiskLevel) {
+                case "Eleve" -> "Contenu potentiellement trompeur ou faux";
+                case "Moyen" -> "Contenu a verifier avant partage";
+                default -> "Contenu plutot fiable, verification humaine recommandee pour les points sensibles";
+            };
+        }
+
+        List<String> securityRecommendations = cleanList(modules == null ? null : modules.securityRecommendations());
+        if (securityRecommendations.isEmpty()) {
+            securityRecommendations = new ArrayList<>();
+            if ("Eleve".equals(trustRiskLevel)) {
+                securityRecommendations.add("Ne pas partager ce contenu en l'etat");
+            }
+            securityRecommendations.add("Verifier aupres de sources officielles");
+            if (!technicalRisks.isEmpty()) {
+                securityRecommendations.add("Ne pas cliquer sur les liens suspects sans verification");
+            }
+            securityRecommendations.add("Demander une verification humaine pour les affirmations critiques");
+            securityRecommendations = List.copyOf(new LinkedHashSet<>(securityRecommendations));
+        }
+
+        List<String> humanVerificationSteps = cleanList(modules == null ? null : modules.humanVerificationSteps());
+        if (humanVerificationSteps.isEmpty()) {
+            humanVerificationSteps = cleanList(recommendedChecks);
+        }
+
+        String impactReason = defaultText(modules == null ? null : modules.impactReason(), null);
+        if (impactReason == null) {
+            impactReason = "Eleve".equals(impact)
+                ? "Le contenu peut influencer des decisions sensibles s'il est partage sans verification."
+                : "Moyen".equals(impact)
+                    ? "Le contenu peut induire en erreur un public large selon son contexte de diffusion."
+                    : "Le risque de dommage est limite mais une verification reste recommandee.";
+        }
+
+        AdvancedModulesInsight insight = new AdvancedModulesInsight();
+        insight.setViralityLevel(viralityLevel);
+        insight.setViralityReasons(viralityReasons);
+        insight.setSharingFactors(sharingFactors);
+        insight.setManipulationSignals(manipulationSignals);
+        insight.setMisinformationImpact(impact);
+        insight.setImpactReason(impactReason);
+        insight.setTrustRiskLevel(trustRiskLevel);
+        insight.setTrustConclusion(trustConclusion);
+        insight.setTechnicalRisks(technicalRisks);
+        insight.setSecurityRecommendations(securityRecommendations);
+        insight.setHumanVerificationSteps(humanVerificationSteps);
+        return insight;
+    }
+
+    private AdvancedAnalysisModules toResponseModules(AnalysisRecord record, AnalysisResolution resolution) {
+        AdvancedModulesInsight modules = record.getAdvancedModules();
+        if (modules == null) {
+            modules = resolveAdvancedModules(
+                null,
+                record.getInputType(),
+                resolution,
+                record.getNormalizedText(),
+                record.getRiskLabels(),
+                record.getVisitedUrls(),
+                record.getRecommendedChecks()
+            );
+        }
+
+        return new AdvancedAnalysisModules(
+            defaultText(modules.getViralityLevel(), "Moyen"),
+            cleanList(modules.getViralityReasons()),
+            cleanList(modules.getSharingFactors()),
+            cleanList(modules.getManipulationSignals()),
+            defaultText(modules.getMisinformationImpact(), "Moyen"),
+            defaultText(modules.getImpactReason(), "Impact non determine avec precision."),
+            defaultText(modules.getTrustRiskLevel(), inferTrustRiskLevel(resolution)),
+            defaultText(modules.getTrustConclusion(), "Verification humaine recommandee."),
+            cleanList(modules.getTechnicalRisks()),
+            cleanList(modules.getSecurityRecommendations()),
+            cleanList(modules.getHumanVerificationSteps())
+        );
+    }
+
+    private String inferImpact(List<String> riskLabels, AnalysisResolution resolution) {
+        List<String> labels = riskLabels == null ? List.of() : riskLabels.stream().map(String::toLowerCase).toList();
+        if (labels.stream().anyMatch(label -> label.contains("public safety") || label.contains("health") || label.contains("financial") || label.contains("scam"))) {
+            return "Eleve";
+        }
+        if (labels.stream().anyMatch(label -> label.contains("polit") || label.contains("misinformation") || label.contains("impersonation"))) {
+            return "Moyen";
+        }
+        Integer score = resolution.score();
+        if (score != null && score < 35) {
+            return "Eleve";
+        }
+        return "Faible";
+    }
+
+    private String inferTrustRiskLevel(AnalysisResolution resolution) {
+        if (resolution.status() == AnalysisStatus.CANNOT_ANALYZE) {
+            return "Moyen";
+        }
+        Integer score = resolution.score();
+        if (score == null) {
+            return "Moyen";
+        }
+        if (score < 40) {
+            return "Eleve";
+        }
+        if (score < 70) {
+            return "Moyen";
+        }
+        return "Faible";
+    }
+
+    private String normalizeLevel(String level) {
+        if (level == null) {
+            return null;
+        }
+        String normalized = level.trim().toLowerCase();
+        if (normalized.startsWith("elev") || normalized.equals("high")) {
+            return "Eleve";
+        }
+        if (normalized.startsWith("moy") || normalized.equals("medium")) {
+            return "Moyen";
+        }
+        if (normalized.startsWith("fai") || normalized.equals("low")) {
+            return "Faible";
+        }
+        return null;
+    }
+
+    private boolean containsAny(String content, String... terms) {
+        if (content == null || content.isBlank()) {
+            return false;
+        }
+        for (String term : terms) {
+            if (content.contains(term)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> appendUnique(List<String> values, String item) {
+        LinkedHashSet<String> merged = new LinkedHashSet<>(values == null ? List.of() : values);
+        merged.add(item);
+        return List.copyOf(merged);
     }
 
     private List<String> defaultLimitations(InputType inputType, AnalysisResolution resolution) {
@@ -561,7 +819,7 @@ public class AnalysisService {
     }
 
     private AnalysisResolution resolveAnalysisResolution(InputType inputType, AsiInvestigationResult result) {
-        Integer score = clampScore(result.credibility_score());
+        Integer score = clampScoreOrNull(result.credibility_score());
         Verdict verdict = null;
         if (score != null) {
             verdict = Verdict.fromLabel(result.verdict());
@@ -569,6 +827,7 @@ public class AnalysisService {
                 verdict = Verdict.fromScore(score);
             }
         }
+        score = reconcileScoreWithVerdict(score, verdict);
 
         if (inputType != InputType.VIDEO) {
             return new AnalysisResolution(AnalysisStatus.COMPLETED, null, score == null ? 50 : score, verdict == null ? Verdict.QUESTIONABLE : verdict);
@@ -619,14 +878,19 @@ public class AnalysisService {
         );
     }
 
-    private boolean containsAny(String text, String... patterns) {
-        for (String pattern : patterns) {
-            if (text.contains(pattern)) {
-                return true;
-            }
+    private Integer reconcileScoreWithVerdict(Integer score, Verdict verdict) {
+        if (score == null || verdict == null) {
+            return score;
         }
-        return false;
+
+        return switch (verdict) {
+            case LIKELY_FAKE -> score <= 29 ? score : 18;
+            case QUESTIONABLE -> (score >= 30 && score <= 59) ? score : 45;
+            case LIKELY_TRUE -> (score >= 60 && score <= 79) ? score : 72;
+            case VERIFIED -> score >= 80 ? score : 92;
+        };
     }
+
 
     private boolean hasValue(String value) {
         return value != null && !value.isBlank();

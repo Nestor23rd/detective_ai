@@ -26,6 +26,7 @@ public record AnalysisResponse(
     String reasoning,
     List<String> limitations,
     List<String> recommendedChecks,
+    AdvancedAnalysisModules advancedModules,
     Instant createdAt
 ) {
 }

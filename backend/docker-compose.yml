@@ -17,11 +17,11 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: 8080
-      ASI_ONE_API_KEY: ${ASI_ONE_API_KEY:-}
-      ASI_ONE_MODEL: ${ASI_ONE_MODEL:-asi1}
-      ASI_ONE_BASE_URL: ${ASI_ONE_BASE_URL:-https://api.asi1.ai/v1}
-      ASI_ONE_WEB_SEARCH: ${ASI_ONE_WEB_SEARCH:-true}
-      ASI_ONE_MAX_TOKENS: ${ASI_ONE_MAX_TOKENS:-2200}
+      GRADIENT_AI_API_KEY: ${GRADIENT_AI_API_KEY:-${ASI_ONE_API_KEY:-}}
+      GRADIENT_AI_MODEL: ${GRADIENT_AI_MODEL:-${ASI_ONE_MODEL:-asi1}}
+      GRADIENT_AI_BASE_URL: ${GRADIENT_AI_BASE_URL:-${ASI_ONE_BASE_URL:-https://api.asi1.ai/v1}}
+      GRADIENT_AI_WEB_SEARCH: ${GRADIENT_AI_WEB_SEARCH:-${ASI_ONE_WEB_SEARCH:-true}}
+      GRADIENT_AI_MAX_TOKENS: ${GRADIENT_AI_MAX_TOKENS:-${ASI_ONE_MAX_TOKENS:-2200}}
       MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/ai_detective}
       APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:-https://your-frontend-domain.com}
       JAVA_OPTS: ${JAVA_OPTS:-}

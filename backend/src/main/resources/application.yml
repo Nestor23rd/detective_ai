@@ -17,13 +17,13 @@ server:
 app:
   cors:
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:4200}
-  asi:
-    base-url: ${ASI_ONE_BASE_URL:https://api.asi1.ai/v1}
-    api-key: ${ASI_ONE_API_KEY:}
-    model: ${ASI_ONE_MODEL:asi1}
-    temperature: ${ASI_ONE_TEMPERATURE:0.1}
-    max-tokens: ${ASI_ONE_MAX_TOKENS:2200}
-    web-search: ${ASI_ONE_WEB_SEARCH:true}
+  ai:
+    base-url: ${GRADIENT_AI_BASE_URL:${AI_BASE_URL:${ASI_ONE_BASE_URL:https://api.asi1.ai/v1}}}
+    api-key: ${GRADIENT_AI_API_KEY:${AI_API_KEY:${ASI_ONE_API_KEY:}}}
+    model: ${GRADIENT_AI_MODEL:${AI_MODEL:${ASI_ONE_MODEL:asi1}}}
+    temperature: ${GRADIENT_AI_TEMPERATURE:${AI_TEMPERATURE:${ASI_ONE_TEMPERATURE:0.1}}}
+    max-tokens: ${GRADIENT_AI_MAX_TOKENS:${AI_MAX_TOKENS:${ASI_ONE_MAX_TOKENS:2200}}}
+    web-search: ${GRADIENT_AI_WEB_SEARCH:${AI_WEB_SEARCH:${ASI_ONE_WEB_SEARCH:true}}}
   extraction:
     user-agent: ${ARTICLE_USER_AGENT:Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36}
     max-text-length: ${ARTICLE_MAX_TEXT_LENGTH:7000}
